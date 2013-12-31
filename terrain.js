@@ -1,6 +1,5 @@
 ﻿/*jslint browser: true*/
 /*export TERRAIN*/
-/*global makePerspective, Matrix, $V*/
 /*global GLMatrix*/
 /*global Float32Array*/
 
@@ -17,27 +16,31 @@ TERRAIN = {};
 		shaderProgram,
 		vertexPositionAttribute,
 		vertexColorAttribute,
-		squareVerticesBuffer,
-		squareVerticesColorBuffer,
+		terrainVerticesBuffer,
+		terrainVerticesColorBuffer,
 		perspectiveMatrix,
-		mvMatrix,
+		modelviewMatrix,
+		method,
 		deslocX,
 		deslocY,
 		dist,
 		angle,
+		scale,
 		size,
+		side,
 
 	// Interface
 		xPos,
 		yPos,
 		zPos,
 		fov,
-		scale,
+		scaleInput,
 
 	// Funções
 		initWebGL,
 		initShaders,
 		initBuffers,
+		generateVertices,
 		getShader,
 		drawScene,
 		setProjection,
@@ -51,13 +54,18 @@ TERRAIN = {};
 		yPos = document.getElementById("yPos");
 		zPos = document.getElementById("zPos");
 		fov = document.getElementById("fov");
-		scale = document.getElementById("scale");
+		scaleInput = document.getElementById("scale");
+		
+		//method = "Diamond-square/Midpoint Displacement";
+		method = "Open cube";
+		size = 0.1;
+		side = 100;
 
 		deslocX = 0;
 		deslocY = 0;
-		dist = 0;
+		dist = 10;
 		angle = 45;
-		size = 1;
+		scale = 1;
 
 		initWebGL();
 
@@ -65,6 +73,8 @@ TERRAIN = {};
 		initBuffers();
 
 		setProjection();
+
+		generateVertices();
 
 		setInterval(drawScene, 150);
 
@@ -79,7 +89,7 @@ TERRAIN = {};
 		}, false);
 
 		zPos.addEventListener("input", function () {
-			dist = zPos.valueAsNumber - 50;
+			dist = zPos.valueAsNumber - 40;
 			drawScene();
 		}, false);
 
@@ -90,9 +100,8 @@ TERRAIN = {};
 			drawScene();
 		});
 
-		scale.addEventListener("input", function () {
-			size = scale.valueAsNumber;
-			console.log(size);
+		scaleInput.addEventListener("input", function () {
+			scale = scaleInput.valueAsNumber;
 			drawScene();
 		}, false);
 	};
@@ -138,83 +147,105 @@ TERRAIN = {};
 	};
 
 	initBuffers = function initBuffers() {
+		terrainVerticesBuffer = gl.createBuffer();
+
+		terrainVerticesColorBuffer = gl.createBuffer();
+	};
+
+	generateVertices = function () {
 		var vertices,
-			colors;
+			colors,
+			depth,
+			width;
 
-		vertices = [
-			1.0, 1.0, 10.0,
-			-1.0, 1.0, 10.0,
-			1.0, -1.0, 10.0,
-			-1.0, 1.0, 10.0,
-			-1.0, -1.0, 10.0,
-			1.0, -1.0, 10.0,
-			1.0, 1.0, 10.0,
-			1.0, -1.0, 10.0,
-			1.0, -1.0, 9.0,
-			1.0, 1.0, 9.0,
-			1.0, 1.0, 10.0,
-			1.0, -1.0, 9.0,
-			-1.0, -1.0, 10.0,
-			-1.0, 1.0, 10.0,
-			-1.0, 1.0, 9.0,
-			-1.0, -1.0, 9.0,
-			-1.0, -1.0, 10.0,
-			-1.0, 1.0, 9.0,
-			-1.0, 1.0, 10.0,
-			1.0, 1.0, 10.0,
-			1.0, 1.0, 9.0,
-			-1.0, 1.0, 9.0,
-			-1.0, 1.0, 10.0,
-			1.0, 1.0, 9.0,
-			1.0, -1.0, 10.0,
-			-1.0, -1.0, 10.0,
-			-1.0, -1.0, 9.0,
-			1.0, -1.0, 9.0,
-			1.0, -1.0, 10.0,
-			-1.0, -1.0, 9.0,
-		];
+		vertices = [];
+		colors = [];
 
-		colors = [
-			1.0, 0.0, 0.0, 1.0,
-			1.0, 0.0, 0.0, 1.0,
-			1.0, 0.0, 0.0, 1.0,
-			1.0, 0.0, 0.0, 1.0,
-			1.0, 0.0, 0.0, 1.0,
-			1.0, 0.0, 0.0, 1.0,
-			1.0, 1.0, 0.0, 1.0,
-			1.0, 1.0, 0.0, 1.0,
-			1.0, 1.0, 0.0, 1.0,
-			1.0, 1.0, 0.0, 1.0,
-			1.0, 1.0, 0.0, 1.0,
-			1.0, 1.0, 0.0, 1.0,
-			1.0, 0.0, 1.0, 1.0,
-			1.0, 0.0, 1.0, 1.0,
-			1.0, 0.0, 1.0, 1.0,
-			1.0, 0.0, 1.0, 1.0,
-			1.0, 0.0, 1.0, 1.0,
-			1.0, 0.0, 1.0, 1.0,
-			0.0, 0.0, 1.0, 1.0,
-			0.0, 0.0, 1.0, 1.0,
-			0.0, 0.0, 1.0, 1.0,
-			0.0, 0.0, 1.0, 1.0,
-			0.0, 0.0, 1.0, 1.0,
-			0.0, 0.0, 1.0, 1.0,
-			0.0, 1.0, 0.0, 1.0,
-			0.0, 1.0, 0.0, 1.0,
-			0.0, 1.0, 0.0, 1.0,
-			0.0, 1.0, 0.0, 1.0,
-			0.0, 1.0, 0.0, 1.0,
-			0.0, 1.0, 0.0, 1.0,
-		];
+		switch (method) {
+			case "Diamond-square/Midpoint Displacement":
+				for (depth = 0; depth < side; depth += 1) {
+					for (width = 0; width < side; width += 1) {
 
-		squareVerticesBuffer = gl.createBuffer();
-		gl.bindBuffer(gl.ARRAY_BUFFER, squareVerticesBuffer);
+					}
+				}
+
+
+				break;
+			case "Open cube":
+				vertices.push(
+					1.0, 1.0, 1.0,
+					-1.0, 1.0, 1.0,
+					1.0, -1.0, 1.0,
+					-1.0, 1.0, 1.0,
+					-1.0, -1.0, 1.0,
+					1.0, -1.0, 1.0,
+					1.0, 1.0, 1.0,
+					1.0, -1.0, 1.0,
+					1.0, -1.0, -1.0,
+					1.0, 1.0, -1.0,
+					1.0, 1.0, 1.0,
+					1.0, -1.0, -1.0,
+					-1.0, -1.0, 1.0,
+					-1.0, 1.0, 1.0,
+					-1.0, 1.0, -1.0,
+					-1.0, -1.0, -1.0,
+					-1.0, -1.0, 1.0,
+					-1.0, 1.0, -1.0,
+					-1.0, 1.0, 1.0,
+					1.0, 1.0, 1.0,
+					1.0, 1.0, -1.0,
+					-1.0, 1.0, -1.0,
+					-1.0, 1.0, 1.0,
+					1.0, 1.0, -1.0,
+					1.0, -1.0, 1.0,
+					-1.0, -1.0, 1.0,
+					-1.0, -1.0, -1.0,
+					1.0, -1.0, -1.0,
+					1.0, -1.0, 1.0,
+					-1.0, -1.0, -1.0
+				);
+
+				colors.push(
+					1.0, 0.0, 0.0, 1.0,
+					1.0, 0.0, 0.0, 1.0,
+					1.0, 0.0, 0.0, 1.0,
+					1.0, 0.0, 0.0, 1.0,
+					1.0, 0.0, 0.0, 1.0,
+					1.0, 0.0, 0.0, 1.0,
+					1.0, 1.0, 0.0, 1.0,
+					1.0, 1.0, 0.0, 1.0,
+					1.0, 1.0, 0.0, 1.0,
+					1.0, 1.0, 0.0, 1.0,
+					1.0, 1.0, 0.0, 1.0,
+					1.0, 1.0, 0.0, 1.0,
+					1.0, 0.0, 1.0, 1.0,
+					1.0, 0.0, 1.0, 1.0,
+					1.0, 0.0, 1.0, 1.0,
+					1.0, 0.0, 1.0, 1.0,
+					1.0, 0.0, 1.0, 1.0,
+					1.0, 0.0, 1.0, 1.0,
+					0.0, 0.0, 1.0, 1.0,
+					0.0, 0.0, 1.0, 1.0,
+					0.0, 0.0, 1.0, 1.0,
+					0.0, 0.0, 1.0, 1.0,
+					0.0, 0.0, 1.0, 1.0,
+					0.0, 0.0, 1.0, 1.0,
+					0.0, 1.0, 0.0, 1.0,
+					0.0, 1.0, 0.0, 1.0,
+					0.0, 1.0, 0.0, 1.0,
+					0.0, 1.0, 0.0, 1.0,
+					0.0, 1.0, 0.0, 1.0,
+					0.0, 1.0, 0.0, 1.0
+				);
+				break;
+		}
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, terrainVerticesBuffer);
 		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-		squareVerticesColorBuffer = gl.createBuffer();
-		gl.bindBuffer(gl.ARRAY_BUFFER, squareVerticesColorBuffer);
+		gl.bindBuffer(gl.ARRAY_BUFFER, terrainVerticesColorBuffer);
 		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-	};
+	}
 
 	getShader = function getShader(id) {
 		var shaderScript,
@@ -265,15 +296,15 @@ TERRAIN = {};
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 		/*jslint bitwise: false*/
 
-		mvMatrix = GLMatrix.identity(4);
-		mvMatrix
-			.translate(deslocX, deslocY, dist)
-			.scale(size, size, size);
+		modelviewMatrix = GLMatrix.identity(4);
+		modelviewMatrix
+			.scale(scale, scale, scale)
+			.translate(deslocX, deslocY, dist);
 
-		gl.bindBuffer(gl.ARRAY_BUFFER, squareVerticesBuffer);
+		gl.bindBuffer(gl.ARRAY_BUFFER, terrainVerticesBuffer);
 		gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
 
-		gl.bindBuffer(gl.ARRAY_BUFFER, squareVerticesColorBuffer);
+		gl.bindBuffer(gl.ARRAY_BUFFER, terrainVerticesColorBuffer);
 		gl.vertexAttribPointer(vertexColorAttribute, 4, gl.FLOAT, false, 0, 0);
 
 		setMatrixUniforms();
@@ -294,7 +325,7 @@ TERRAIN = {};
 
 		mvUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
 		gl.uniformMatrix4fv(mvUniform, false,
-							new Float32Array(mvMatrix.elements));
+							new Float32Array(modelviewMatrix.elements));
 	};
 }());
 
