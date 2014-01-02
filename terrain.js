@@ -24,23 +24,36 @@ TERRAIN = {};
 		deslocX,
 		deslocY,
 		dist,
+		pitch,
+		yaw,
+		roll,
 		angle,
 		scale,
 		size,
 		side,
+		maxHeight,
+		vertices,
+		colors,
 
 	// Interface
 		xPos,
 		yPos,
 		zPos,
+		xRot,
+		yRot,
+		zRot,
 		fov,
 		scaleInput,
+		model,
+		dimension,
+		sqSize,
 
 	// Funções
 		initWebGL,
 		initShaders,
 		initBuffers,
 		generateVertices,
+		generateHeights,
 		getShader,
 		drawScene,
 		setProjection,
@@ -53,17 +66,27 @@ TERRAIN = {};
 		xPos = document.getElementById("xPos");
 		yPos = document.getElementById("yPos");
 		zPos = document.getElementById("zPos");
+		xRot = document.getElementById("xRot");
+		yRot = document.getElementById("yRot");
+		zRot = document.getElementById("zRot");
 		fov = document.getElementById("fov");
 		scaleInput = document.getElementById("scale");
-		
+		model = document.getElementById("model");
+		dimension = document.getElementById("dimension");
+		sqSize = document.getElementById("sqSize");
+
 		//method = "Diamond-square/Midpoint Displacement";
 		method = "Open cube";
 		size = 0.1;
-		side = 100;
+		side = 128;
+		maxHeight = side * size;
 
 		deslocX = 0;
 		deslocY = 0;
 		dist = 10;
+		pitch = 0;
+		yaw = 0;
+		roll = 0;
 		angle = 45;
 		scale = 1;
 
@@ -93,6 +116,21 @@ TERRAIN = {};
 			drawScene();
 		}, false);
 
+		xRot.addEventListener("input", function () {
+			pitch = xRot.valueAsNumber;
+			drawScene();
+		}, false);
+
+		yRot.addEventListener("input", function () {
+			yaw = yRot.valueAsNumber;
+			drawScene();
+		}, false);
+
+		zRot.addEventListener("input", function () {
+			roll = zRot.valueAsNumber;
+			drawScene();
+		}, false);
+
 		fov.addEventListener("input", function () {
 			angle = fov.valueAsNumber;
 
@@ -102,6 +140,26 @@ TERRAIN = {};
 
 		scaleInput.addEventListener("input", function () {
 			scale = scaleInput.valueAsNumber;
+			drawScene();
+		}, false);
+
+		model.addEventListener("change", function () {
+			method = model.value;
+			generateVertices();
+			drawScene();
+		}, false);
+
+		dimension.addEventListener("change", function () {
+			side = parseInt(dimension.value, 10);
+			maxHeight = side * size;
+			generateVertices();
+			drawScene();
+		}, false);
+
+		sqSize.addEventListener("change", function () {
+			size = sqSize.valueAsNumber;
+			maxHeight = side * size;
+			generateVertices();
 			drawScene();
 		}, false);
 	};
@@ -152,92 +210,120 @@ TERRAIN = {};
 		terrainVerticesColorBuffer = gl.createBuffer();
 	};
 
-	generateVertices = function () {
-		var vertices,
-			colors,
+	generateVertices = function generateVertices() {
+		var heights,
+			halfSide,
+			halfTerrainSize,
+			color,
+			index,
 			depth,
-			width;
+			width,
+			depthIndex,
+			widthIndex;
 
 		vertices = [];
 		colors = [];
 
 		switch (method) {
-			case "Diamond-square/Midpoint Displacement":
-				for (depth = 0; depth < side; depth += 1) {
-					for (width = 0; width < side; width += 1) {
+		case "Diamond-square/Midpoint Displacement":
+			heights = [];
 
+			generateHeights(heights);
+
+			halfSide = side / 2;
+			halfTerrainSize = halfSide * size;
+
+			for (depthIndex = 0, depth = -halfTerrainSize;
+				depthIndex < side;
+				depthIndex += 1, depth += size) {
+				for (widthIndex = 0, width = -halfTerrainSize;
+					widthIndex < side;
+					widthIndex += 1, width += size) {
+					vertices.push(
+						width, heights[depthIndex * (side + 1) + widthIndex], depth,
+						width, heights[(depthIndex + 1) * (side + 1) + widthIndex], depth + size,
+						width + size, heights[(depthIndex + 1) * (side + 1) + widthIndex + 1], depth + size,
+						
+						width + size, heights[(depthIndex + 1) * (side + 1) + widthIndex + 1], depth + size,
+						width + size, heights[depthIndex * (side + 1) + widthIndex + 1], depth,
+						width, heights[depthIndex * (side + 1) + widthIndex], depth
+					);
+
+					color = [Math.random(), Math.random(), Math.random(), 1.0];
+
+					for (index = 0; index < 6; index += 1) {
+						Array.prototype.push.apply(colors, color);
 					}
 				}
+			}
+			break;
+		case "Open cube":
+			vertices.push(
+				1.0, 1.0, 1.0,
+				-1.0, 1.0, 1.0,
+				1.0, -1.0, 1.0,
+				-1.0, 1.0, 1.0,
+				-1.0, -1.0, 1.0,
+				1.0, -1.0, 1.0,
+				1.0, 1.0, 1.0,
+				1.0, -1.0, 1.0,
+				1.0, -1.0, -1.0,
+				1.0, 1.0, -1.0,
+				1.0, 1.0, 1.0,
+				1.0, -1.0, -1.0,
+				-1.0, -1.0, 1.0,
+				-1.0, 1.0, 1.0,
+				-1.0, 1.0, -1.0,
+				-1.0, -1.0, -1.0,
+				-1.0, -1.0, 1.0,
+				-1.0, 1.0, -1.0,
+				-1.0, 1.0, 1.0,
+				1.0, 1.0, 1.0,
+				1.0, 1.0, -1.0,
+				-1.0, 1.0, -1.0,
+				-1.0, 1.0, 1.0,
+				1.0, 1.0, -1.0,
+				1.0, -1.0, 1.0,
+				-1.0, -1.0, 1.0,
+				-1.0, -1.0, -1.0,
+				1.0, -1.0, -1.0,
+				1.0, -1.0, 1.0,
+				-1.0, -1.0, -1.0
+			);
 
-
-				break;
-			case "Open cube":
-				vertices.push(
-					1.0, 1.0, 1.0,
-					-1.0, 1.0, 1.0,
-					1.0, -1.0, 1.0,
-					-1.0, 1.0, 1.0,
-					-1.0, -1.0, 1.0,
-					1.0, -1.0, 1.0,
-					1.0, 1.0, 1.0,
-					1.0, -1.0, 1.0,
-					1.0, -1.0, -1.0,
-					1.0, 1.0, -1.0,
-					1.0, 1.0, 1.0,
-					1.0, -1.0, -1.0,
-					-1.0, -1.0, 1.0,
-					-1.0, 1.0, 1.0,
-					-1.0, 1.0, -1.0,
-					-1.0, -1.0, -1.0,
-					-1.0, -1.0, 1.0,
-					-1.0, 1.0, -1.0,
-					-1.0, 1.0, 1.0,
-					1.0, 1.0, 1.0,
-					1.0, 1.0, -1.0,
-					-1.0, 1.0, -1.0,
-					-1.0, 1.0, 1.0,
-					1.0, 1.0, -1.0,
-					1.0, -1.0, 1.0,
-					-1.0, -1.0, 1.0,
-					-1.0, -1.0, -1.0,
-					1.0, -1.0, -1.0,
-					1.0, -1.0, 1.0,
-					-1.0, -1.0, -1.0
-				);
-
-				colors.push(
-					1.0, 0.0, 0.0, 1.0,
-					1.0, 0.0, 0.0, 1.0,
-					1.0, 0.0, 0.0, 1.0,
-					1.0, 0.0, 0.0, 1.0,
-					1.0, 0.0, 0.0, 1.0,
-					1.0, 0.0, 0.0, 1.0,
-					1.0, 1.0, 0.0, 1.0,
-					1.0, 1.0, 0.0, 1.0,
-					1.0, 1.0, 0.0, 1.0,
-					1.0, 1.0, 0.0, 1.0,
-					1.0, 1.0, 0.0, 1.0,
-					1.0, 1.0, 0.0, 1.0,
-					1.0, 0.0, 1.0, 1.0,
-					1.0, 0.0, 1.0, 1.0,
-					1.0, 0.0, 1.0, 1.0,
-					1.0, 0.0, 1.0, 1.0,
-					1.0, 0.0, 1.0, 1.0,
-					1.0, 0.0, 1.0, 1.0,
-					0.0, 0.0, 1.0, 1.0,
-					0.0, 0.0, 1.0, 1.0,
-					0.0, 0.0, 1.0, 1.0,
-					0.0, 0.0, 1.0, 1.0,
-					0.0, 0.0, 1.0, 1.0,
-					0.0, 0.0, 1.0, 1.0,
-					0.0, 1.0, 0.0, 1.0,
-					0.0, 1.0, 0.0, 1.0,
-					0.0, 1.0, 0.0, 1.0,
-					0.0, 1.0, 0.0, 1.0,
-					0.0, 1.0, 0.0, 1.0,
-					0.0, 1.0, 0.0, 1.0
-				);
-				break;
+			colors.push(
+				1.0, 0.0, 0.0, 1.0,
+				1.0, 0.0, 0.0, 1.0,
+				1.0, 0.0, 0.0, 1.0,
+				1.0, 0.0, 0.0, 1.0,
+				1.0, 0.0, 0.0, 1.0,
+				1.0, 0.0, 0.0, 1.0,
+				1.0, 1.0, 0.0, 1.0,
+				1.0, 1.0, 0.0, 1.0,
+				1.0, 1.0, 0.0, 1.0,
+				1.0, 1.0, 0.0, 1.0,
+				1.0, 1.0, 0.0, 1.0,
+				1.0, 1.0, 0.0, 1.0,
+				1.0, 0.0, 1.0, 1.0,
+				1.0, 0.0, 1.0, 1.0,
+				1.0, 0.0, 1.0, 1.0,
+				1.0, 0.0, 1.0, 1.0,
+				1.0, 0.0, 1.0, 1.0,
+				1.0, 0.0, 1.0, 1.0,
+				0.0, 0.0, 1.0, 1.0,
+				0.0, 0.0, 1.0, 1.0,
+				0.0, 0.0, 1.0, 1.0,
+				0.0, 0.0, 1.0, 1.0,
+				0.0, 0.0, 1.0, 1.0,
+				0.0, 0.0, 1.0, 1.0,
+				0.0, 1.0, 0.0, 1.0,
+				0.0, 1.0, 0.0, 1.0,
+				0.0, 1.0, 0.0, 1.0,
+				0.0, 1.0, 0.0, 1.0,
+				0.0, 1.0, 0.0, 1.0,
+				0.0, 1.0, 0.0, 1.0
+			);
+			break;
 		}
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, terrainVerticesBuffer);
@@ -245,7 +331,53 @@ TERRAIN = {};
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, terrainVerticesColorBuffer);
 		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-	}
+	};
+
+	generateHeights = function generateHeights(heights) {
+		var depth,
+			width,
+			halfDepth,
+			halfWidth,
+			length;
+
+		//function diamond(x1, z1, x2, z2) {
+		//	var count,
+		//		half;
+
+		//	count = 2;
+
+		//	if (x1 === x2) {
+		//		half = (z2 - z1) / 2;
+
+
+		//	}
+		//}
+
+		for (length = (side + 1) * (side + 1) ; length > 0; length -= 1) {
+			heights.push(null);
+		}
+
+		heights[0] = Math.random() * maxHeight;
+		heights[side] = Math.random() * maxHeight;
+		heights[side * (side + 1)] = Math.random() * maxHeight;
+		heights[side * (side + 1) + side] = Math.random() * maxHeight;
+
+		for (length = side; length > 1; length /= 2) {
+			for (depth = 0; depth <= side; depth += length) {
+				for (width = 0; width <= side; width += length) {
+					halfDepth = depth + (length / 2);
+					halfWidth = width + (length / 2);
+
+					heights[halfDepth * (side + 1) + halfWidth] = (
+						heights[depth * (side + 1) + width] +
+						heights[depth * (side + 1) + width + length] +
+						heights[(depth + length) * (side + 1) + width] +
+						heights[(depth + length) * (side + 1) + width + length]
+					) / 4;
+				}
+			}
+		}
+	};
 
 	getShader = function getShader(id) {
 		var shaderScript,
@@ -298,6 +430,9 @@ TERRAIN = {};
 
 		modelviewMatrix = GLMatrix.identity(4);
 		modelviewMatrix
+			.rotate(pitch, 1.0, 0.0, 0.0)
+			.rotate(yaw, 0.0, 1.0, 0.0)
+			.rotate(roll, 0.0, 0.0, 1.0)
 			.scale(scale, scale, scale)
 			.translate(deslocX, deslocY, dist);
 
@@ -308,10 +443,10 @@ TERRAIN = {};
 		gl.vertexAttribPointer(vertexColorAttribute, 4, gl.FLOAT, false, 0, 0);
 
 		setMatrixUniforms();
-		gl.drawArrays(gl.TRIANGLES, 0, 30);
+		gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 3);
 	};
 
-	setProjection = function () {
+	setProjection = function setProjection() {
 		perspectiveMatrix = GLMatrix.perspective(angle, 1.0, 0.1, 100.0);
 	};
 

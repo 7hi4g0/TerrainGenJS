@@ -1,24 +1,24 @@
-﻿#interface
+﻿.interface
 {
 	display: inline-block;
 	vertical-align: top;
 	margin-left: 20px;
 }
 
-	#interface label
+	.interface label
 	{
 		display: block;
 		font-weight: bold;
 		margin-bottom: 7px;
 	}
 
-		#interface label.sub
+		.interface label.sub
 		{
 			font-weight: normal;
 			margin-left: 15px;
 		}
 
-	#interface input
+	.interface input
 	{
 		margin-left: 15px;
 	}
