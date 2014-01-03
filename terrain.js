@@ -13,6 +13,7 @@ TERRAIN = {};
 	// Variáveis
 	var gl,
 		canvas,
+		shaderName,
 		shaderProgram,
 		vertexPositionAttribute,
 		vertexColorAttribute,
@@ -47,6 +48,7 @@ TERRAIN = {};
 		model,
 		dimension,
 		sqSize,
+		shaderSelect,
 
 	// Funções
 		initWebGL,
@@ -74,12 +76,14 @@ TERRAIN = {};
 		model = document.getElementById("model");
 		dimension = document.getElementById("dimension");
 		sqSize = document.getElementById("sqSize");
+		shaderSelect = document.getElementById("shaderSelect");
 
 		//method = "Diamond-square/Midpoint Displacement";
+		shaderName = "colorfull";
 		method = "Open cube";
 		size = 0.1;
 		side = 128;
-		maxHeight = side * size;
+		maxHeight = 10;
 
 		deslocX = 0;
 		deslocY = 0;
@@ -151,15 +155,21 @@ TERRAIN = {};
 
 		dimension.addEventListener("change", function () {
 			side = parseInt(dimension.value, 10);
-			maxHeight = side * size;
+			//maxHeight = Math.min(side * size, 25);
 			generateVertices();
 			drawScene();
 		}, false);
 
 		sqSize.addEventListener("change", function () {
 			size = sqSize.valueAsNumber;
-			maxHeight = side * size;
+			//maxHeight = Math.min(side * size, 25);
 			generateVertices();
+			drawScene();
+		}, false);
+
+		shaderSelect.addEventListener("change", function () {
+			shaderName = shaderSelect.value;
+			initShaders();
 			drawScene();
 		}, false);
 	};
@@ -168,7 +178,7 @@ TERRAIN = {};
 		gl = canvas.getContext("webgl");
 
 		//gl.viewport(0, 0, canvas.width, canvas.height);
-		gl.clearColor(0.0, 0.0, 0.0, 1.0);
+		gl.clearColor(0.3, 0.5, 0.9, 1.0);
 		gl.clearDepth(1.0);
 		gl.enable(gl.DEPTH_TEST);
 		gl.depthFunc(gl.LEQUAL);
@@ -182,8 +192,8 @@ TERRAIN = {};
 		var fragmentShader,
 			vertexShader;
 
-		fragmentShader = getShader("shader-fs");
-		vertexShader = getShader("shader-vs");
+		fragmentShader = getShader(shaderName + "-fs");
+		vertexShader = getShader(shaderName + "-vs");
 
 		shaderProgram = gl.createProgram();
 		gl.attachShader(shaderProgram, vertexShader);
@@ -192,7 +202,7 @@ TERRAIN = {};
 
 		// Verifica se linkou corretamente
 		if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-			alert("Incapaz de inicializar programa shader.");
+			alert("Incapaz de inicializar programa shader: " + gl.getProgramInfoLog(shaderProgram));
 		}
 
 		gl.useProgram(shaderProgram);
@@ -200,8 +210,10 @@ TERRAIN = {};
 		vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
 		gl.enableVertexAttribArray(vertexPositionAttribute);
 
-		vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor");
-		gl.enableVertexAttribArray(vertexColorAttribute);
+		if (shaderName === "colorfull") {
+			vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor");
+			gl.enableVertexAttribArray(vertexColorAttribute);
+		}
 	};
 
 	initBuffers = function initBuffers() {
@@ -336,6 +348,8 @@ TERRAIN = {};
 	generateHeights = function generateHeights(heights) {
 		var depth,
 			width,
+			diff,
+			//smoothness,
 			halfDepth,
 			halfWidth,
 			length;
@@ -383,20 +397,26 @@ TERRAIN = {};
 				heights[z1 * (side + 1) + x1] +
 				heights[z2 * (side + 1) + x2];
 			height /= count;
+			height += (Math.random() * 2 * diff) - diff;
 
 			heights[heightIndex] = height;
 		}
+
+		//smoothness = 0.2;
+		//diff = maxHeight * Math.pow(2, -smoothness);
+		diff = 5;
 
 		for (length = (side + 1) * (side + 1) ; length > 0; length -= 1) {
 			heights.push(null);
 		}
 
-		heights[0] = Math.random() * maxHeight;
-		heights[side] = Math.random() * maxHeight;
-		heights[side * (side + 1)] = Math.random() * maxHeight;
-		heights[side * (side + 1) + side] = Math.random() * maxHeight;
+		heights[0] = //Math.random() * maxHeight;
+		heights[side] = //Math.random() * maxHeight;
+		heights[side * (side + 1)] = //Math.random() * maxHeight;
+		heights[side * (side + 1) + side] = //Math.random() * maxHeight;
+			maxHeight;
 
-		for (length = side; length > 1; length /= 2) {
+		for (length = side; length > 1; length /= 2, diff /= 2) {
 			for (depth = 0; depth < side; depth += length) {
 				for (width = 0; width < side; width += length) {
 					halfDepth = depth + (length / 2);
@@ -407,12 +427,19 @@ TERRAIN = {};
 						heights[depth * (side + 1) + width + length] +
 						heights[(depth + length) * (side + 1) + width] +
 						heights[(depth + length) * (side + 1) + width + length]
-					) / 4;
+					) / 4 + (Math.random() * 2 * diff) - diff;
+				}
+			}
+			for (depth = 0; depth < side; depth += length) {
+				for (width = 0; width < side; width += length) {
+					//diff = diff * Math.pow(2, -smoothness);
 
 					diamond(width, depth, width, depth + length);
 					diamond(width, depth, width + length, depth);
 					diamond(width + length, depth, width + length, depth + length);
 					diamond(width, depth + length, width + length, depth + length);
+
+					//diff = diff * Math.pow(2, -smoothness);
 				}
 			}
 		}
@@ -469,6 +496,7 @@ TERRAIN = {};
 
 		modelviewMatrix = GLMatrix.identity(4);
 		modelviewMatrix
+			.rotate(90, 1.0, 0.0, 0.0)
 			.rotate(pitch, 1.0, 0.0, 0.0)
 			.rotate(yaw, 0.0, 1.0, 0.0)
 			.rotate(roll, 0.0, 0.0, 1.0)
@@ -478,8 +506,10 @@ TERRAIN = {};
 		gl.bindBuffer(gl.ARRAY_BUFFER, terrainVerticesBuffer);
 		gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
 
-		gl.bindBuffer(gl.ARRAY_BUFFER, terrainVerticesColorBuffer);
-		gl.vertexAttribPointer(vertexColorAttribute, 4, gl.FLOAT, false, 0, 0);
+		if (shaderName === "colorfull") {
+			gl.bindBuffer(gl.ARRAY_BUFFER, terrainVerticesColorBuffer);
+			gl.vertexAttribPointer(vertexColorAttribute, 4, gl.FLOAT, false, 0, 0);
+		}
 
 		setMatrixUniforms();
 		gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 3);
@@ -491,7 +521,8 @@ TERRAIN = {};
 
 	setMatrixUniforms = function setMatrixUniforms() {
 		var pUniform,
-			mvUniform;
+			mvUniform,
+			mhUniform;
 
 		pUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
 		gl.uniformMatrix4fv(pUniform, false,
@@ -500,6 +531,11 @@ TERRAIN = {};
 		mvUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
 		gl.uniformMatrix4fv(mvUniform, false,
 							new Float32Array(modelviewMatrix.elements));
+
+		if (shaderName === "heightmap") {
+			mhUniform = gl.getUniformLocation(shaderProgram, "uMaxHeight");
+			gl.uniform1f(mhUniform, maxHeight);
+		}
 	};
 }());
 

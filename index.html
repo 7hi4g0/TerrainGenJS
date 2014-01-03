@@ -10,7 +10,7 @@
 	<script src="../glMatrixJS/glMatrix.js"></script>
 	<script src="terrain.js"></script>
 
-	<script id="shader-fs" type="x-shader/x-fragment">
+	<script id="heightmap-fs" type="x-shader/x-fragment">
 		varying lowp vec4 vColor;
 
 		void main(void) {
@@ -18,7 +18,30 @@
 		}
 	</script>
 
-	<script id="shader-vs" type="x-shader/x-vertex">
+	<script id="heightmap-vs" type="x-shader/x-vertex">
+		attribute vec3 aVertexPosition;
+
+		uniform mat4 uMVMatrix;
+		uniform mat4 uPMatrix;
+		uniform float uMaxHeight;
+
+		varying lowp vec4 vColor;
+        
+		void main(void) {
+			gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+			vColor = vec4(vec3(0.0, uMaxHeight - aVertexPosition.y, 0.0) / uMaxHeight, 1.0);
+		}
+	</script>
+
+	<script id="colorfull-fs" type="x-shader/x-fragment">
+		varying lowp vec4 vColor;
+
+		void main(void) {
+			gl_FragColor = vColor;
+		}
+	</script>
+
+	<script id="colorfull-vs" type="x-shader/x-vertex">
 		attribute vec3 aVertexPosition;
 		attribute vec4 aVertexColor;
 
@@ -76,10 +99,18 @@
 			<option value="64">64</option>
 			<option value="128" selected="selected">128</option>
 			<option value="256">256</option>
+			<option value="512">512</option>
+			<option value="1024">1024</option>
 		</select>
 
 		<label for="sqSize">Square size:</label>
 		<input id="sqSize" type="range" min="0.01" max="2" step="0.01" value="0.1" />
+
+		<label>Shading:</label>
+		<select id="shaderSelect">
+			<option value="colorfull" selected="selected">Random colors</option>
+			<option value="heightmap">Grayscale</option>
+		</select>
 	</div>
 </body>
 </html>
