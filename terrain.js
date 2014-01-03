@@ -340,18 +340,52 @@ TERRAIN = {};
 			halfWidth,
 			length;
 
-		//function diamond(x1, z1, x2, z2) {
-		//	var count,
-		//		half;
+		function diamond(x1, z1, x2, z2) {
+			var count,
+				half,
+				heightIndex,
+				height;
 
-		//	count = 2;
+			count = 2;
+			height = 0;
 
-		//	if (x1 === x2) {
-		//		half = (z2 - z1) / 2;
+			if (x1 === x2) {
+				half = (z2 - z1) / 2;
 
+				heightIndex = (z1 + half) * (side + 1) + x1;
 
-		//	}
-		//}
+				if (x1 - half >= 0) {
+					height += heights[(z1 + half) * (side + 1) + x1 - half];
+					count += 1;
+				}
+
+				if (x1 + half <= side) {
+					height += heights[(z1 + half) * (side + 1) + x1 + half];
+					count += 1;
+				}
+			} else if (z1 === z2) {
+				half = (x2 - x1) / 2;
+
+				heightIndex = z1 * (side + 1) + x1 + half;
+
+				if (z1 - half >= 0) {
+					height += heights[(z1 - half) * (side + 1) + x1 + half];
+					count += 1;
+				}
+
+				if (z1 + half <= side) {
+					height += heights[(z1 + half) * (side + 1) + x1 + half];
+					count += 1;
+				}
+			}
+
+			height +=
+				heights[z1 * (side + 1) + x1] +
+				heights[z2 * (side + 1) + x2];
+			height /= count;
+
+			heights[heightIndex] = height;
+		}
 
 		for (length = (side + 1) * (side + 1) ; length > 0; length -= 1) {
 			heights.push(null);
@@ -363,8 +397,8 @@ TERRAIN = {};
 		heights[side * (side + 1) + side] = Math.random() * maxHeight;
 
 		for (length = side; length > 1; length /= 2) {
-			for (depth = 0; depth <= side; depth += length) {
-				for (width = 0; width <= side; width += length) {
+			for (depth = 0; depth < side; depth += length) {
+				for (width = 0; width < side; width += length) {
 					halfDepth = depth + (length / 2);
 					halfWidth = width + (length / 2);
 
@@ -374,6 +408,11 @@ TERRAIN = {};
 						heights[(depth + length) * (side + 1) + width] +
 						heights[(depth + length) * (side + 1) + width + length]
 					) / 4;
+
+					diamond(width, depth, width, depth + length);
+					diamond(width, depth, width + length, depth);
+					diamond(width + length, depth, width + length, depth + length);
+					diamond(width, depth + length, width + length, depth + length);
 				}
 			}
 		}
