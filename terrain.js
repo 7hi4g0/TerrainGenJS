@@ -1,6 +1,7 @@
 ﻿/*jslint browser: true*/
 /*export TERRAIN*/
 /*global GLMatrix*/
+/*global RANDOM*/
 /*global Float32Array*/
 
 var TERRAIN;
@@ -35,6 +36,8 @@ TERRAIN = {};
 		maxHeight,
 		vertices,
 		colors,
+		rand,
+		seed,
 
 	// Interface
 		xPos,
@@ -49,6 +52,7 @@ TERRAIN = {};
 		dimension,
 		sqSize,
 		shaderSelect,
+		seedInput,
 
 	// Funções
 		initWebGL,
@@ -77,13 +81,14 @@ TERRAIN = {};
 		dimension = document.getElementById("dimension");
 		sqSize = document.getElementById("sqSize");
 		shaderSelect = document.getElementById("shaderSelect");
+		seedInput = document.getElementById("seedInput");
 
 		//method = "Diamond-square/Midpoint Displacement";
 		shaderName = "colorfull";
 		method = "Open cube";
 		size = 0.1;
 		side = 128;
-		maxHeight = 10;
+		maxHeight = side;
 
 		deslocX = 0;
 		deslocY = 0;
@@ -93,6 +98,8 @@ TERRAIN = {};
 		roll = 0;
 		angle = 45;
 		scale = 1;
+
+		seed = 42;
 
 		initWebGL();
 
@@ -154,22 +161,29 @@ TERRAIN = {};
 		}, false);
 
 		dimension.addEventListener("change", function () {
-			side = parseInt(dimension.value, 10);
-			//maxHeight = Math.min(side * size, 25);
+			maxHeight = side = parseInt(dimension.value, 10);
 			generateVertices();
 			drawScene();
 		}, false);
 
 		sqSize.addEventListener("change", function () {
 			size = sqSize.valueAsNumber;
-			//maxHeight = Math.min(side * size, 25);
-			generateVertices();
-			drawScene();
 		}, false);
 
 		shaderSelect.addEventListener("change", function () {
 			shaderName = shaderSelect.value;
 			initShaders();
+			drawScene();
+		}, false);
+
+		seedInput.addEventListener("change", function () {
+			seed = seedInput.value;
+
+			if (seed === parseInt(seed, 10).toString()) {
+				seed = parseInt(seed, 10);
+			}
+
+			generateVertices();
 			drawScene();
 		}, false);
 	};
@@ -236,6 +250,8 @@ TERRAIN = {};
 		vertices = [];
 		colors = [];
 
+		rand = RANDOM.RC4(seed);
+
 		switch (method) {
 		case "Diamond-square/Midpoint Displacement":
 			heights = [];
@@ -245,23 +261,23 @@ TERRAIN = {};
 			halfSide = side / 2;
 			halfTerrainSize = halfSide * size;
 
-			for (depthIndex = 0, depth = -halfTerrainSize;
+			for (depthIndex = 0, depth = -halfSide;
 				depthIndex < side;
-				depthIndex += 1, depth += size) {
-				for (widthIndex = 0, width = -halfTerrainSize;
+				depthIndex += 1, depth += 1) {
+				for (widthIndex = 0, width = -halfSide;
 					widthIndex < side;
-					widthIndex += 1, width += size) {
+					widthIndex += 1, width += 1) {
 					vertices.push(
 						width, heights[depthIndex * (side + 1) + widthIndex], depth,
-						width, heights[(depthIndex + 1) * (side + 1) + widthIndex], depth + size,
-						width + size, heights[(depthIndex + 1) * (side + 1) + widthIndex + 1], depth + size,
+						width, heights[(depthIndex + 1) * (side + 1) + widthIndex], depth + 1,
+						width + 1, heights[(depthIndex + 1) * (side + 1) + widthIndex + 1], depth + 1,
 						
-						width + size, heights[(depthIndex + 1) * (side + 1) + widthIndex + 1], depth + size,
-						width + size, heights[depthIndex * (side + 1) + widthIndex + 1], depth,
+						width + 1, heights[(depthIndex + 1) * (side + 1) + widthIndex + 1], depth + 1,
+						width + 1, heights[depthIndex * (side + 1) + widthIndex + 1], depth,
 						width, heights[depthIndex * (side + 1) + widthIndex], depth
 					);
 
-					color = [Math.random(), Math.random(), Math.random(), 1.0];
+					color = [rand.random(), rand.random(), rand.random(), 1.0];
 
 					for (index = 0; index < 6; index += 1) {
 						Array.prototype.push.apply(colors, color);
@@ -397,14 +413,14 @@ TERRAIN = {};
 				heights[z1 * (side + 1) + x1] +
 				heights[z2 * (side + 1) + x2];
 			height /= count;
-			height += (Math.random() * 2 * diff) - diff;
+			height += (rand.random() * 2 * diff) - diff;
 
 			heights[heightIndex] = height;
 		}
 
 		//smoothness = 0.2;
 		//diff = maxHeight * Math.pow(2, -smoothness);
-		diff = 5;
+		diff = maxHeight / 2;
 
 		for (length = (side + 1) * (side + 1) ; length > 0; length -= 1) {
 			heights.push(null);
@@ -427,7 +443,7 @@ TERRAIN = {};
 						heights[depth * (side + 1) + width + length] +
 						heights[(depth + length) * (side + 1) + width] +
 						heights[(depth + length) * (side + 1) + width + length]
-					) / 4 + (Math.random() * 2 * diff) - diff;
+					) / 4 + (rand.random() * 2 * diff) - diff;
 				}
 			}
 			for (depth = 0; depth < side; depth += length) {
@@ -522,6 +538,7 @@ TERRAIN = {};
 	setMatrixUniforms = function setMatrixUniforms() {
 		var pUniform,
 			mvUniform,
+			szUniform,
 			mhUniform;
 
 		pUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
@@ -531,6 +548,9 @@ TERRAIN = {};
 		mvUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
 		gl.uniformMatrix4fv(mvUniform, false,
 							new Float32Array(modelviewMatrix.elements));
+
+		szUniform = gl.getUniformLocation(shaderProgram, "uSize");
+		gl.uniform1f(szUniform, size);
 
 		if (shaderName === "heightmap") {
 			mhUniform = gl.getUniformLocation(shaderProgram, "uMaxHeight");
