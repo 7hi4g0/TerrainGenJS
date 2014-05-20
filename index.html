@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -6,6 +6,8 @@
 	<title>Terrain Generator</title>
 
 	<link type="text/css" rel="stylesheet" href="terrain.css" />
+
+    <script type='text/javascript' id='lt_ws' src='http://localhost:47858/socket.io/lighttable/ws.js'></script>
 
 	<script src="../glMatrixJS/glMatrix.js"></script>
 	<script src="../RandomJS/RC4.js"></script>
@@ -30,7 +32,7 @@
 
 		varying lowp vec4 vColor;
 		varying lowp float blend;
-        
+
 		void main(void) {
 			gl_Position = uMVMatrix * vec4(aVertexPosition * uSize, 1.0);
 			vColor = vec4(vec3(0.0, 1.5 * uMaxHeight - aVertexPosition.y, 0.0) / uMaxHeight, 1.0);
@@ -58,7 +60,7 @@
 
 		varying lowp vec4 vColor;
 		varying lowp float blend;
-        
+
 		void main(void) {
 			gl_Position = uMVMatrix * vec4(aVertexPosition * uSize, 1.0);
 			vColor = aVertexColor;
@@ -68,7 +70,7 @@
 	</script>
 </head>
 <body>
-	<canvas id="glcanvas" width="640" height="640">
+	<canvas id="glcanvas" width="640" height="640" tabIndex="1">
 		Seu browser é ruim!
 	</canvas>
 

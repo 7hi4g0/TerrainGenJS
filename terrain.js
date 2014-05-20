@@ -1,4 +1,4 @@
-﻿/*jslint browser: true*/
+/*jslint browser: true*/
 /*export TERRAIN*/
 /*global GLMatrix*/
 /*global RANDOM*/
@@ -23,6 +23,10 @@ TERRAIN = {};
 		perspectiveMatrix,
 		modelviewMatrix,
 		method,
+		time,
+		walkSpeed,
+		moveX,
+		moveZ,
 		deslocX,
 		deslocY,
 		dist,
@@ -61,11 +65,15 @@ TERRAIN = {};
 		generateVertices,
 		generateHeights,
 		getShader,
+		calculateFrame,
 		drawScene,
+		setCamera,
 		setProjection,
 
 	// Funções de ajuda
 		setMatrixUniforms;
+
+	walkSpeed = 1.5;
 
 	TERRAIN.init = function init() {
 		canvas = document.getElementById("glcanvas");
@@ -90,12 +98,15 @@ TERRAIN = {};
 		side = 128;
 		maxHeight = side;
 
+		moveX = 0;
+		moveZ = 0;
+
 		deslocX = 0;
 		deslocY = 0;
 		dist = 10;
-		pitch = 0;
-		yaw = 0;
-		roll = 0;
+		//pitch = 0;
+		//yaw = 0;
+		//roll = 0;
 		angle = 45;
 		scale = 1;
 
@@ -106,41 +117,74 @@ TERRAIN = {};
 		initShaders();
 		initBuffers();
 
+		setCamera();
 		setProjection();
 
 		generateVertices();
 
-		setInterval(drawScene, 150);
+		time = new Date().getTime();
 
-		xPos.addEventListener("input", function () {
-			deslocX = xPos.valueAsNumber - 10;
-			drawScene();
+		setInterval(drawScene, 18);
+
+		canvas.addEventListener("keydown", function (event) {
+			switch (event.keyCode) {
+				case 87:
+					moveZ = -walkSpeed;
+					break;
+				case 83:
+					moveZ = walkSpeed;
+					break;
+				case 65:
+					moveX = walkSpeed;
+					break;
+				case 68:
+					moveX = -walkSpeed;
+					break;
+			}
 		}, false);
 
-		yPos.addEventListener("input", function () {
-			deslocY = yPos.valueAsNumber - 10;
-			drawScene();
+		canvas.addEventListener("keyup", function (event) {
+			switch (event.keyCode) {
+				case 87:
+				case 83:
+					moveZ = 0;
+					break;
+				case 65:
+				case 68:
+					moveX = 0;
+					break;
+			}
 		}, false);
 
-		zPos.addEventListener("input", function () {
-			dist = zPos.valueAsNumber - 40;
-			drawScene();
-		}, false);
+		//xPos.addEventListener("input", function () {
+			//deslocX = xPos.valueAsNumber - 10;
+			//drawScene();
+		//}, false);
 
-		xRot.addEventListener("input", function () {
-			pitch = xRot.valueAsNumber;
-			drawScene();
-		}, false);
+		//yPos.addEventListener("input", function () {
+			//deslocY = yPos.valueAsNumber - 10;
+			//drawScene();
+		//}, false);
 
-		yRot.addEventListener("input", function () {
-			yaw = yRot.valueAsNumber;
-			drawScene();
-		}, false);
+		//zPos.addEventListener("input", function () {
+			//dist = zPos.valueAsNumber - 40;
+			//drawScene();
+		//}, false);
 
-		zRot.addEventListener("input", function () {
-			roll = zRot.valueAsNumber;
-			drawScene();
-		}, false);
+		//xRot.addEventListener("input", function () {
+			//pitch = xRot.valueAsNumber;
+			//drawScene();
+		//}, false);
+
+		//yRot.addEventListener("input", function () {
+			//yaw = yRot.valueAsNumber;
+			//drawScene();
+		//}, false);
+
+		//zRot.addEventListener("input", function () {
+			//roll = zRot.valueAsNumber;
+			//drawScene();
+		//}, false);
 
 		fov.addEventListener("input", function () {
 			angle = fov.valueAsNumber;
@@ -271,7 +315,7 @@ TERRAIN = {};
 						width, heights[depthIndex * (side + 1) + widthIndex], depth,
 						width, heights[(depthIndex + 1) * (side + 1) + widthIndex], depth + 1,
 						width + 1, heights[(depthIndex + 1) * (side + 1) + widthIndex + 1], depth + 1,
-						
+
 						width + 1, heights[(depthIndex + 1) * (side + 1) + widthIndex + 1], depth + 1,
 						width + 1, heights[depthIndex * (side + 1) + widthIndex + 1], depth,
 						width, heights[depthIndex * (side + 1) + widthIndex], depth
@@ -505,19 +549,32 @@ TERRAIN = {};
 		return shader;
 	};
 
+	calculateFrame = function calculateFrame() {
+		var movementX,
+			movementZ,
+			timeNow;
+
+		timeNow = new Date().getTime();
+
+		time = (timeNow - time) / 1000;
+
+		movementX = moveX * time;
+		movementZ = moveZ * time;
+
+		modelviewMatrix.translate(movementX, 0, movementZ);
+
+		deslocX += movementX;
+		dist += movementZ;
+
+		time = timeNow;
+	};
+
 	drawScene = function drawScene() {
 		/*jslint bitwise: true*/
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 		/*jslint bitwise: false*/
 
-		modelviewMatrix = GLMatrix.identity(4);
-		modelviewMatrix
-			.rotate(90, 1.0, 0.0, 0.0)
-			.rotate(pitch, 1.0, 0.0, 0.0)
-			.rotate(yaw, 0.0, 1.0, 0.0)
-			.rotate(roll, 0.0, 0.0, 1.0)
-			.scale(scale, scale, scale)
-			.translate(deslocX, deslocY, dist);
+		calculateFrame();
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, terrainVerticesBuffer);
 		gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
@@ -529,6 +586,17 @@ TERRAIN = {};
 
 		setMatrixUniforms();
 		gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 3);
+	};
+
+	setCamera = function setCamera() {
+		modelviewMatrix = GLMatrix.identity(4);
+		modelviewMatrix
+			.rotate(90, 1.0, 0.0, 0.0)
+			//.rotate(pitch, 1.0, 0.0, 0.0)
+			//.rotate(yaw, 0.0, 1.0, 0.0)
+			//.rotate(roll, 0.0, 0.0, 1.0)
+			.scale(scale, scale, scale)
+			.translate(deslocX, deslocY, dist);
 	};
 
 	setProjection = function setProjection() {
