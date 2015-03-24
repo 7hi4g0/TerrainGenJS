@@ -33,7 +33,7 @@
         
 		void main(void) {
 			gl_Position = uMVMatrix * vec4(aVertexPosition * uSize, 1.0);
-			vColor = vec4(vec3(0.0, 1.5 * uMaxHeight - aVertexPosition.y, 0.0) / uMaxHeight, 1.0);
+			vColor = vec4(vec3(0.0, 0.5 * uMaxHeight + aVertexPosition.y, 0.0) / uMaxHeight, 1.0);
 			blend = clamp((100.0 - length(gl_Position)) / 90.0, 0.0, 1.0);
 			gl_Position = uPMatrix * gl_Position;
 		}
