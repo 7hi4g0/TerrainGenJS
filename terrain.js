@@ -179,7 +179,7 @@ TERRAIN = {};
 		seedInput.addEventListener("change", function () {
 			seed = seedInput.value;
 
-			if (seed === parseInt(seed, 10).toString()) {
+			if (Number.isFinite(parseInt(seed, 10))) {
 				seed = parseInt(seed, 10);
 			}
 
@@ -426,11 +426,11 @@ TERRAIN = {};
 			heights.push(null);
 		}
 
-		heights[0] = //Math.random() * maxHeight;
-		heights[side] = //Math.random() * maxHeight;
-		heights[side * (side + 1)] = //Math.random() * maxHeight;
-		heights[side * (side + 1) + side] = //Math.random() * maxHeight;
-			maxHeight;
+		heights[0] = //rand.random() * maxHeight;
+		heights[side] = //rand.random() * maxHeight;
+		heights[side * (side + 1)] = //rand.random() * maxHeight;
+		heights[side * (side + 1) + side] = //rand.random() * maxHeight;
+			0;
 
 		for (length = side; length > 1; length /= 2, diff /= 2) {
 			for (depth = 0; depth < side; depth += length) {
@@ -512,7 +512,7 @@ TERRAIN = {};
 
 		modelviewMatrix = GLMatrix.identity(4);
 		modelviewMatrix
-			.rotate(90, 1.0, 0.0, 0.0)
+			.rotate(-90, 1.0, 0.0, 0.0)
 			.rotate(pitch, 1.0, 0.0, 0.0)
 			.rotate(yaw, 0.0, 1.0, 0.0)
 			.rotate(roll, 0.0, 0.0, 1.0)
